@@ -25,7 +25,10 @@ pipeline{
             steps{
                 sh 'pip install -r requirements.txt'
                 echo 'Dependencias instaladas. El WORKSPACE actual es:'
-                sh 'ls -lah'
+                sh '''
+                pwd
+                ls -lah
+                '''
             }
         }
         stage('Tests'){
@@ -34,6 +37,7 @@ pipeline{
                     steps{
                         catchError(buildResult:'UNSTABLE', stageResult: 'FAILURE'){
                             sh'''
+                            export PATH="$PATH:/home/jenkins/.local/bin"
                             export PYTHONPATH=$(pwd)
                             pytest --junitxml=result-unit.xml test/unit
                             '''
@@ -49,6 +53,7 @@ pipeline{
 
                             // Iniciar FLASK en background
                             sh'''
+                            export PATH="$PATH:/home/jenkins/.local/bin"
                             export FLASK_APP=app/api.py
                             nohup flask run > flask.log 2>&1 &
                             '''

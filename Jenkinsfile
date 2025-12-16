@@ -75,7 +75,7 @@ pipeline{
                             pytest --junitxml=result-service.xml test/rest
                             '''
 
-                            stash name:'rest-res', includes:'result-rest.xml'
+                            stash name:'rest-res', includes:'result-service.xml'
                         }
                     }
                 }

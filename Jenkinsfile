@@ -4,7 +4,7 @@ pipeline{
     stages{
         stage('Get Code'){
             steps{
-                git 'https://github.com/FeelNostalgic/jenkins-helloworld.git'
+                checkout scm
             }
         }
         stage('Static Analysis'){

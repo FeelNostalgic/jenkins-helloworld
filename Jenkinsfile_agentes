@@ -6,6 +6,12 @@ pipeline{
     stages{
         stage('Get Code'){
             steps{
+                sh'''
+                whoami
+                hostname
+                echo WORKSPACE
+                pwd
+                '''
                 git 'https://github.com/FeelNostalgic/jenkins-helloworld.git'
                 stash name:'code', includes:'**'
             }

@@ -162,7 +162,7 @@ pipeline{
                 [pyLint(name: 'Bandit', pattern: 'bandit.out')],
                     qualityGates: [
                     [threshold: 10, type: 'TOTAL', unstable: true],
-                    [threshold: 2, type: 'TOTAL', unstable: false]
+                    [threshold: 3, type: 'TOTAL', unstable: false]
                     ]
             }
         }

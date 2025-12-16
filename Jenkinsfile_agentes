@@ -1,11 +1,10 @@
 pipeline{
-    agent none
+    agent any
 
     options { skipDefaultCheckout() }
 
     stages{
         stage('Get Code'){
-            agent { label 'agent-02' }
             steps{
                 sh'''
                 whoami

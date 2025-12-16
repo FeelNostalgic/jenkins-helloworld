@@ -70,6 +70,7 @@ pipeline{
 
                             // Ejecutar las pruebas
                             sh'''
+                            export PATH="$PATH:/home/jenkins/.local/bin"
                             export PYTHONPATH=$(pwd)
                             pytest --junitxml=result-service.xml test/rest
                             '''
@@ -83,9 +84,11 @@ pipeline{
 
         stage('Results'){
             steps{
-                unstash name:'unit-res'
-                unstash name:'rest-res'
-                junit 'result-unit.xml, result-service.xml'
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    unstash name:'unit-res'
+                    unstash name:'rest-res'
+                    junit 'result-unit.xml, result-service.xml'
+                }
             }
         }
 

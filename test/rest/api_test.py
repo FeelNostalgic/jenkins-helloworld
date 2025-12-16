@@ -68,7 +68,6 @@ class TestApi(unittest.TestCase):
 
     def test_divide_by_zero(self):
         url = f"{BASE_URL}/calc/divide/2/0"
-        response = urlopen(url, timeout=DEFAULT_TIMEOUT)
         try:
             urlopen(url, timeout=DEFAULT_TIMEOUT)
             self.fail(

@@ -1,6 +1,7 @@
 import http.client
 import os
 import unittest
+from urllib.error import HTTPError
 from urllib.request import urlopen
 
 import pytest
@@ -68,10 +69,27 @@ class TestApi(unittest.TestCase):
     def test_divide_by_zero(self):
         url = f"{BASE_URL}/calc/divide/2/0"
         response = urlopen(url, timeout=DEFAULT_TIMEOUT)
-        self.assertEqual(
-            response.status, http.client.OK, f"Error en la petición API a {url}"
-        )
-        self.assertEqual(response.status, http.client.NOT_ACCEPTABLE, "ERROR DIVIDE BY ZERO")
+        try:
+            urlopen(url, timeout=DEFAULT_TIMEOUT)
+            self.fail(
+                f"La API en {url} devolvió 200 OK, pero se esperaba {http.client.NOT_ACCEPTABLE}."
+            )
+        except HTTPError as e:
+            self.assertEqual(
+                e.code,
+                http.client.NOT_ACCEPTABLE,
+                f"ERROR: Código de estado incorrecto. Esperado: {http.client.NOT_ACCEPTABLE} ({http.client.NOT_ACCEPTABLE.name}), Recibido: {e.code}"
+            )
+
+            error_message = e.read().decode().strip()
+            self.assertEqual(
+                error_message,
+                "ERROR: Division by zero",
+                "El mensaje de error devuelto no coincide con el esperado."
+            )
+
+        except Exception as e:
+            self.fail(f"Fallo de conexión o excepción inesperada: {e}")
 
 
 if __name__ == "__main__":  # pragma: no cover

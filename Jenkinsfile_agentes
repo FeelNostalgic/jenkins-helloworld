@@ -10,6 +10,33 @@ pipeline{
                 stash name:'code', includes:'**'
             }
         }
+
+        stage('Setup Agents - Install Dependencies'){
+            parallel {
+                stage('Setup Agent 01'){
+                    agent { label 'agent-01' }
+                    steps {
+                        unstash name:'code'
+                        sh 'pip install -r requirements.txt'
+                    }
+                }
+                stage('Setup Agent 02'){
+                    agent { label 'agent-02' }
+                    steps {
+                        unstash name:'code'
+                        sh 'pip install -r requirements.txt'
+                    }
+                }
+                stage('Setup Agent 03'){
+                    agent { label 'agent-03' }
+                    steps {
+                        unstash name:'code'
+                        sh 'pip install -r requirements.txt'
+                    }
+                }
+            }
+        }
+
         stage('Static Analysis'){
             agent {label 'agent-01'}
             steps{
@@ -20,7 +47,6 @@ pipeline{
                     hostname
                     echo WORKSPACE
                     pwd
-                    pip install -r requirements.txt
                     flake8 --exit-zero --format=pylint app > flake8.out
                     '''
                     recordIssues tools: [flake8(pattern: 'flake8.out')],
@@ -43,7 +69,6 @@ pipeline{
                             hostname
                             echo WORKSPACE
                             pwd
-                            pip install -r requirements.txt
                             export PATH="$PATH:/home/jenkins/.local/bin"
                             export PYTHONPATH=$(pwd)
                             pytest --junitxml=result-unit.xml test/unit
@@ -64,7 +89,6 @@ pipeline{
                             hostname
                             echo WORKSPACE
                             pwd
-                            pip install -r requirements.txt
                             '''
 
                             // Iniciar FLASK en background

@@ -1,0 +1,153 @@
+pipeline{
+    agent any
+
+    options { skipDefaultCheckout() }
+
+    stages{
+        stage('Get Code'){
+            steps{
+                git 'https://github.com/FeelNostalgic/jenkins-helloworld.git'
+                stash name:'code', includes:'**'
+            }
+        }
+        stage('Static Analysis'){
+            agent {label 'agent-01'}
+            steps{
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    unstash name:'code'
+                    sh'''
+                    whoami
+                    hostname
+                    pwd
+                    pip install -r requirements.txt
+                    flake8 --exit-zero --format=pylint app > flake8.out
+                    '''
+                    recordIssues tools: [flake8(pattern: 'flake8.out')],
+                                   qualityGates: [
+                                       [threshold: 10, type: 'TOTAL', unstable: true],
+                                       [threshold: 11, type: 'TOTAL', unstable: false]
+                                   ]
+                }
+            }
+        }
+        stage('Tests'){
+            parallel{
+                stage('Unit Test'){
+                    agent {label 'agent-02'}
+                    steps{
+                        catchError(buildResult:'UNSTABLE', stageResult: 'FAILURE'){
+                            unstash name:'code'
+                            sh'''
+                            whoami
+                            hostname
+                            pwd
+                            pip install -r requirements.txt
+                            export PATH="$PATH:/home/jenkins/.local/bin"
+                            export PYTHONPATH=$(pwd)
+                            pytest --junitxml=result-unit.xml test/unit
+                            '''
+                            // archiveArtifacts artifacts: 'result-unit.xml', allowEmptyArchive: true
+                            stash name:'unit-res', includes:'result-unit.xml'
+                        }
+                    }
+                }
+                stage('Service Tests (E2E/Integration)'){
+                    agent {label 'agent-03'}
+                    steps{
+                        catchError(buildResult:'UNSTABLE', stageResult: 'FAILURE'){
+                            // Dependencias
+                            unstash name:'code'
+                            sh '''
+                            whoami
+                            hostname
+                            pwd
+                            pip install -r requirements.txt'
+                            ''
+
+                            // Iniciar FLASK en background
+                            sh'''
+                            export PATH="$PATH:/home/jenkins/.local/bin"
+                            export FLASK_APP=app/api.py
+                            nohup flask run > flask.log 2>&1 &
+                            '''
+
+                            // Iniciar WireMock en background
+                            sh'''
+                            nohup java -jar /usr/local/bin/wiremock-standalone.jar --port 9090 --root-dir test/wiremock > wiremock.log 2>&1 &
+                            '''
+
+                            // Esperar un momento para que los servicios arranquen
+                            echo 'Esperando 5 segundos para el arranque de servicios...'
+                            sh 'sleep 5'
+
+                            // Ejecutar las pruebas
+                            sh'''
+                            export PATH="$PATH:/home/jenkins/.local/bin"
+                            export PYTHONPATH=$(pwd)
+                            pytest --junitxml=result-service.xml test/rest
+                            '''
+
+                            // archiveArtifacts artifacts: 'result-service.xml', allowEmptyArchive: true
+                            stash name:'rest-res', includes:'result-service.xml'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Results'){
+            steps{
+                unstash name:'unit-res'
+                unstash name:'rest-res'
+                junit 'result-unit.xml, result-service.xml'
+            }
+        }
+
+        stage('Coverage'){
+            steps{
+                sh'''
+                coverage run --branch --source=app --omit=app/__init__.py,app/api.py -m pytest test/unit
+                coverage xml
+                '''
+                recordCoverage qualityGates: [
+                [criticality: 'ERROR', integerThreshold: 85, metric: 'LINE', threshold: 85.0],
+                [integerThreshold: 95, metric: 'LINE', threshold:95.0],
+                [critically: 'ERROR', integerThreshold: 80, metric: 'BRANCH', threshold: 80.0],
+                [integerThreshold: 90, metric: 'BRANCH', threshold: 90.0]],
+                tools:
+                [[parser: 'COBERTURA', pattern: 'coverage.xml']]
+            }
+        }
+
+        stage('Security'){
+            agent {label 'agent-01'}
+            steps{
+                sh '''
+                bandit --exit-zero -r . -f custom -o bandit.out --msg-template "{abspath}:{line}: [{test_id}] {msg}"
+                '''
+                recordIssues tools:
+                [pyLint(name: 'Bandit', pattern: 'bandit.out')],
+                    qualityGates: [
+                    [threshold: 10, type: 'TOTAL', unstable: true],
+                    [threshold: 2, type: 'TOTAL', unstable: false]
+                    ]
+            }
+        }
+
+//         stage('Performance'){
+//             steps{
+//                 // Iniciar FLASK en background
+//                 sh'''
+//                     export FLASK_APP=app/api.py
+//                     nohup flask run > flask.log 2>&1 &
+//                     sleep 4
+//                 '''
+//                 // 2. Iniciar JMeter
+//                 sh'''
+//                     /opt/apache-jmeter-3.6.3 -n -t test/jmeter/flask.jmx -f -l flask.jtl
+//                 '''
+//                 prefReport sourceDataFiles: 'flask.jtl'
+//             }
+//         }
+    }
+}

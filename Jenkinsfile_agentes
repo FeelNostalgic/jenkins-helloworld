@@ -12,7 +12,7 @@ pipeline{
                 echo WORKSPACE
                 pwd
                 '''
-                git 'https://github.com/FeelNostalgic/jenkins-helloworld.git'
+                checkout scm
                 stash name:'code', includes:'**'
             }
         }

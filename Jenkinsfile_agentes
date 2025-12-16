@@ -57,12 +57,12 @@ pipeline{
                         catchError(buildResult:'UNSTABLE', stageResult: 'FAILURE'){
                             // Dependencias
                             unstash name:'code'
-                            sh '''
+                            sh'''
                             whoami
                             hostname
                             pwd
                             pip install -r requirements.txt'
-                            ''
+                            '''
 
                             // Iniciar FLASK en background
                             sh'''

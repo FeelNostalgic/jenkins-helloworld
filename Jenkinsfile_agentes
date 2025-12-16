@@ -18,6 +18,7 @@ pipeline{
                     sh'''
                     whoami
                     hostname
+                    echo WORKSPACE
                     pwd
                     pip install -r requirements.txt
                     flake8 --exit-zero --format=pylint app > flake8.out
@@ -40,6 +41,7 @@ pipeline{
                             sh'''
                             whoami
                             hostname
+                            echo WORKSPACE
                             pwd
                             pip install -r requirements.txt
                             export PATH="$PATH:/home/jenkins/.local/bin"
@@ -60,6 +62,7 @@ pipeline{
                             sh'''
                             whoami
                             hostname
+                            echo WORKSPACE
                             pwd
                             pip install -r requirements.txt'
                             '''

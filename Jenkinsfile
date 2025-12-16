@@ -1,10 +1,6 @@
 pipeline{
-    agent {
-        docker {
-            image 'jenkins-agent:latest'
-            args '-u root'
-        }
-    }
+    agent 'agent-01'
+
     stages{
         stage('Get Code'){
             steps{

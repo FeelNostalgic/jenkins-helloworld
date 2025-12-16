@@ -9,26 +9,25 @@ pipeline{
         }
         stage('Static Analysis'){
             steps{
-                sh'''
-                pip install flake8
-                flake8 --exit-zero --format=pylint app > flake8.out
-                '''
-                recordIssues tools: [flake8(pattern: 'flake8.out')],
-                               qualityGates: [
-                                   // Gate 1: 10 o más errores totales marcan el build como UNSTABLE (TRUE)
-                                   [threshold: 10, type: 'TOTAL', unstable: true],
-                                   // Gate 2: (ejemplo de redundancia, probablemente innecesaria)
-                                    [threshold: 11, type: 'TOTAL', unstable: false]
-                               ]
+                catchError(buildResult:'UNSTABLE', stageResult: 'FAILURE'){
+                    sh'''
+                    flake8 --exit-zero --format=pylint app > flake8.out
+                    '''
+                    recordIssues tools: [flake8(pattern: 'flake8.out')],
+                                   qualityGates: [
+                                       [threshold: 10, type: 'TOTAL', unstable: true],
+                                        [threshold: 11, type: 'TOTAL', unstable: false]
+                                   ]
+                }
             }
         }
-//         stage('Build Dependencies'){
-//             steps{
-//                 sh 'pip install -r requirements.txt'
-//                 echo 'Dependencias instaladas. El WORKSPACE actual es:'
-//                 sh 'ls -lah'
-//             }
-//         }
+        stage('Build Dependencies'){
+            steps{
+                sh 'pip install -r requirements.txt'
+                echo 'Dependencias instaladas. El WORKSPACE actual es:'
+                sh 'ls -lah'
+            }
+        }
         stage('Tests'){
             parallel{
                 stage('Unit Test'){
@@ -45,31 +44,33 @@ pipeline{
                 }
                 stage('Service Tests (E2E/Integration)'){
                     steps{
-                        // Iniciar ambos servicios en background ('&')
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            // Iniciar ambos servicios en background ('&')
 
-                        // Iniciar FLASK en background
-                        sh'''
-                        export FLASK_APP=app/api.py
-                        nohup flask run > flask.log 2>&1 &
-                        '''
+                            // Iniciar FLASK en background
+                            sh'''
+                            export FLASK_APP=app/api.py
+                            nohup flask run > flask.log 2>&1 &
+                            '''
 
-                        // Iniciar WireMock en background
-                        // Usamos la ruta donde lo instalaste en el Dockerfile y '&'
-                        sh'''
-                        nohup java -jar /usr/local/bin/wiremock-standalone.jar --port 9090 --root-dir test/wiremock > wiremock.log 2>&1 &
-                        '''
+                            // Iniciar WireMock en background
+                            // Usamos la ruta donde lo instalaste en el Dockerfile y '&'
+                            sh'''
+                            nohup java -jar /usr/local/bin/wiremock-standalone.jar --port 9090 --root-dir test/wiremock > wiremock.log 2>&1 &
+                            '''
 
-                        // Esperar un momento para que los servicios arranquen
-                        echo 'Esperando 5 segundos para el arranque de servicios...'
-                        sh 'sleep 5'
+                            // Esperar un momento para que los servicios arranquen
+                            echo 'Esperando 5 segundos para el arranque de servicios...'
+                            sh 'sleep 5'
 
-                        // Ejecutar las pruebas
-                        sh'''
-                        export PYTHONPATH=$(pwd)
-                        pytest --junitxml=result-service.xml test/rest
-                        '''
+                            // Ejecutar las pruebas
+                            sh'''
+                            export PYTHONPATH=$(pwd)
+                            pytest --junitxml=result-service.xml test/rest
+                            '''
 
-                        stash name:'rest-res', includes:'result-rest.xml'
+                            stash name:'rest-res', includes:'result-rest.xml'
+                        }
                     }
                 }
             }
@@ -86,7 +87,6 @@ pipeline{
         stage('Coverage'){
             steps{
                 sh'''
-                pip install coverage
                 coverage run --branch --source=app --omit=app/__init__.py,app/api.py -m pytest test/unit
                 coverage xml
                 '''
@@ -103,7 +103,6 @@ pipeline{
         stage('Security'){
             steps{
                 sh '''
-                pip install bandit
                 bandit --exit-zero -r . -f custom -o bandit.out --msg-template "{abspath}:{line}: [{test_id}] {msg}"
                 '''
                 recordIssues tools:

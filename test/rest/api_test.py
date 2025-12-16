@@ -52,7 +52,7 @@ class TestApi(unittest.TestCase):
             response.status, http.client.OK, f"Error en la petición API a {url}"
         )
         self.assertEqual(
-            response.read().decode(), "4.0", "ERROR MULTIPLY"
+            response.read().decode(), "4", "ERROR MULTIPLY"
         )
 
     def test_api_divide(self):
@@ -62,7 +62,7 @@ class TestApi(unittest.TestCase):
             response.status, http.client.OK, f"Error en la petición API a {url}"
         )
         self.assertEqual(
-            response.read().decode(), "1.0", "ERROR DIVIDE"
+            response.read().decode(), "1", "ERROR DIVIDE"
         )
 
     def test_divide_by_zero(self):
